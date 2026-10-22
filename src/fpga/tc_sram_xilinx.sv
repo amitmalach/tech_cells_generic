@@ -47,9 +47,12 @@ module tc_sram #(
 
   // XPM only supports a byte width of 8. Hence, map each input byte to a multiple of 8 bit
   // Number of 8-bit bytes (memory bytes) per data byte
-  localparam int unsigned BytesPerByte     = (ByteWidth + 7) / 8;
+  // With one write enable for the whole word (BeWidth == 1) the word is kept as is: padding
+  // it to a multiple of 8 bits adds constant-zero columns under a single enable, which makes
+  // Vivado 2026.1 abort in synthesis (ramAssert in its RAM optimizer).
+  localparam int unsigned BytesPerByte     = (BeWidth == 32'd1) ? 32'd1 : (ByteWidth + 7) / 8;
   // Number of allocated memory bits per data byte
-  localparam int unsigned ByteWidthAligned = BytesPerByte * 8;
+  localparam int unsigned ByteWidthAligned = (BeWidth == 32'd1) ? DataWidth : BytesPerByte * 8;
   // Resulting memory width and size
   localparam int unsigned DataWidthAligned = ByteWidthAligned * BeWidth;
   localparam int unsigned Size             = NumWords * DataWidthAligned;
@@ -84,7 +87,7 @@ module tc_sram #(
     xpm_memory_spram#(
       .ADDR_WIDTH_A        ( AddrWidth        ), // DECIMAL
       .AUTO_SLEEP_TIME     ( 0                ), // DECIMAL
-      .BYTE_WRITE_WIDTH_A  ( 8                ), // DECIMAL
+      .BYTE_WRITE_WIDTH_A  ( (BeWidth == 32'd1) ? DataWidthAligned : 8 ), // DECIMAL
       .ECC_MODE            ( "no_ecc"         ), // String
       .MEMORY_INIT_FILE    ( "none"           ), // String
       .MEMORY_INIT_PARAM   ( "0"              ), // String
@@ -121,8 +124,8 @@ module tc_sram #(
       .ADDR_WIDTH_A            ( AddrWidth        ), // DECIMAL
       .ADDR_WIDTH_B            ( AddrWidth        ), // DECIMAL
       .AUTO_SLEEP_TIME         ( 0                ), // DECIMAL
-      .BYTE_WRITE_WIDTH_A      ( 8                ), // DECIMAL
-      .BYTE_WRITE_WIDTH_B      ( 8                ), // DECIMAL
+      .BYTE_WRITE_WIDTH_A      ( (BeWidth == 32'd1) ? DataWidthAligned : 8 ), // DECIMAL
+      .BYTE_WRITE_WIDTH_B      ( (BeWidth == 32'd1) ? DataWidthAligned : 8 ), // DECIMAL
       .CLOCKING_MODE           ( "common_clock"   ), // String
       .ECC_MODE                ( "no_ecc"         ), // String
       .MEMORY_INIT_FILE        ( "none"           ), // String
