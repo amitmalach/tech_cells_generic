@@ -47,12 +47,13 @@ module tc_sram #(
 
   // XPM only supports a byte width of 8. Hence, map each input byte to a multiple of 8 bit
   // Number of 8-bit bytes (memory bytes) per data byte
-  // With one write enable for the whole word (BeWidth == 1) the word is kept as is: padding
-  // it to a multiple of 8 bits adds constant-zero columns under a single enable, which makes
-  // Vivado 2026.1 abort in synthesis (ramAssert in its RAM optimizer).
+  // With one write enable for the whole word (BeWidth == 1) the byte is the word and it is
+  // kept as is: padding it to a multiple of 8 bits adds constant-zero columns under a single
+  // enable, which makes Vivado 2026.1 abort in synthesis (ramAssert in its RAM optimizer).
+  localparam int unsigned ByteWidthEff     = (BeWidth == 32'd1) ? DataWidth : ByteWidth;
   localparam int unsigned BytesPerByte     = (BeWidth == 32'd1) ? 32'd1 : (ByteWidth + 7) / 8;
   // Number of allocated memory bits per data byte
-  localparam int unsigned ByteWidthAligned = (BeWidth == 32'd1) ? DataWidth : BytesPerByte * 8;
+  localparam int unsigned ByteWidthAligned = (BeWidth == 32'd1) ? ByteWidthEff : BytesPerByte * 8;
   // Resulting memory width and size
   localparam int unsigned DataWidthAligned = ByteWidthAligned * BeWidth;
   localparam int unsigned Size             = NumWords * DataWidthAligned;
@@ -73,8 +74,8 @@ module tc_sram #(
     assign rdata_o[i]   = data_t'(rdata_pad[i]);
     for (genvar j = 0; j < BeWidth; j++) begin
         // Unpack data
-        assign wdata_al[i][j*ByteWidthAligned+:ByteWidthAligned] = ByteWidthAligned'(wdata_pad[i][j*ByteWidth+:ByteWidth]);
-        assign rdata_pad[i][j*ByteWidth+:ByteWidth]              = ByteWidth'(rdata_al[i][j*ByteWidthAligned+:ByteWidthAligned]);
+        assign wdata_al[i][j*ByteWidthAligned+:ByteWidthAligned] = ByteWidthAligned'(wdata_pad[i][j*ByteWidthEff+:ByteWidthEff]);
+        assign rdata_pad[i][j*ByteWidthEff+:ByteWidthEff]        = ByteWidthEff'(rdata_al[i][j*ByteWidthAligned+:ByteWidthAligned]);
         // In case ByteWidth > 8, let each be_i drive the corresponding number of memory be
         assign be_al[i][j*BytesPerByte+:BytesPerByte]            = {BytesPerByte{be_i[i][j]}};
         assign we_al[i][j*BytesPerByte+:BytesPerByte]            = {BytesPerByte{be_i[i][j] & we_i[i]}};
